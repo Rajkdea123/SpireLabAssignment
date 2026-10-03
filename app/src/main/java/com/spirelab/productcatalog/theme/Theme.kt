@@ -21,16 +21,21 @@ private val LightColors = lightColorScheme(
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFBAC3FF),
-    onPrimary = Color(0xFF08218A),
-    primaryContainer = Color(0xFF293CA0),
-    onPrimaryContainer = Color(0xFFDEE0FF),
-    secondary = Color(0xFFC4C5DD),
-    tertiary = Color(0xFFE6BAD7),
+    background = Color(0xFF0A0A0A),
+    surface = Color(0xFF151515),
+    surfaceVariant = Color(0xFF1F1F1F),
+    primary = Color(0xFF8B5CF6),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFF8B5CF6),
+    onPrimaryContainer = Color.White,
+    secondary = Color(0xFF22D3EE),
+    onSecondary = Color.White,
+    onSurface = Color(0xFFF5F5F5),
+    onSurfaceVariant = Color(0xFF9A9A9A),
 )
 
 /** Star color for ratings; fixed so it reads as a rating in both themes. */
-val RatingStar = Color(0xFFFFB300)
+val RatingStar = Color(0xFF22D3EE)
 
 @Composable
 fun ProductCatalogTheme(

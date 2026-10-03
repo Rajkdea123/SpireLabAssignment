@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.spirelab.productcatalog.ProductCatalogApplication
 import com.spirelab.productcatalog.data.remote.ErrorMessages
+import com.spirelab.productcatalog.data.remote.dto.CategoryDto
 import com.spirelab.productcatalog.data.repository.CartRepository
 import com.spirelab.productcatalog.data.repository.ProductRepository
 import com.spirelab.productcatalog.domain.model.Product
@@ -17,6 +18,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -36,6 +38,8 @@ data class ProductsUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val cartCount: Int = 0,
+    val categories: List<CategoryDto> = emptyList(),
+    val selectedCategorySlug: String? = null,
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -47,7 +51,15 @@ class ProductsViewModel(
 
     // Kept in SavedStateHandle so the search survives process death.
     private val query: StateFlow<String> = savedStateHandle.getStateFlow(QUERY_KEY, "")
+    private val selectedCategorySlug: StateFlow<String?> = savedStateHandle.getStateFlow(CATEGORY_SLUG_KEY, null)
     private val retryRequests = MutableStateFlow(0)
+
+    // Load categories from API once (for CategoriesScreen)
+    private val categories: StateFlow<List<CategoryDto>> = flow {
+        emit(productRepository.getCategories().getOrNull() ?: emptyList())
+    }.catch {
+        emit(emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /**
      * Search pipeline: debounce keystrokes (an empty query loads immediately), skip repeats,
@@ -59,19 +71,20 @@ class ProductsViewModel(
                 .map { it.trim() }
                 .debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
                 .distinctUntilChanged(),
+            selectedCategorySlug,
             retryRequests,
-        ) { trimmedQuery, _ -> trimmedQuery }
-            .flatMapLatest { trimmedQuery ->
+        ) { trimmedQuery, categorySlug, _ -> Pair(trimmedQuery, categorySlug) }
+            .flatMapLatest { (trimmedQuery, categorySlug) ->
                 flow {
                     emit(LoadEvent.Started)
-                    emit(load(trimmedQuery))
+                    emit(load(trimmedQuery, categorySlug))
                 }
             }
             .scan(ResultsState()) { state, event -> state.reduce(event) }
             .stateIn(viewModelScope, SharingStarted.Eagerly, ResultsState())
 
     val uiState: StateFlow<ProductsUiState> =
-        combine(query, results, cartRepository.totalQuantity) { query, results, cartCount ->
+        combine(query, results, cartRepository.totalQuantity, categories, selectedCategorySlug) { query, results, cartCount, categories, selectedCategorySlug ->
             ProductsUiState(
                 query = query,
                 products = results.products,
@@ -79,6 +92,8 @@ class ProductsViewModel(
                 isLoading = results.isLoading,
                 error = results.error,
                 cartCount = cartCount,
+                categories = categories,
+                selectedCategorySlug = selectedCategorySlug,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProductsUiState())
 
@@ -86,15 +101,27 @@ class ProductsViewModel(
         savedStateHandle[QUERY_KEY] = newQuery
     }
 
+    fun onCategorySelect(slug: String?) {
+        savedStateHandle[CATEGORY_SLUG_KEY] = slug
+    }
+
     fun retry() {
         retryRequests.update { it + 1 }
     }
 
-    private suspend fun load(trimmedQuery: String): LoadEvent {
-        val result = if (trimmedQuery.isEmpty()) {
-            productRepository.getProducts()
+    suspend fun loadCategoryThumbnail(slug: String): String {
+        return productRepository.getCategoryThumbnail(slug).getOrNull().orEmpty()
+    }
+
+    private suspend fun load(trimmedQuery: String, categorySlug: String?): LoadEvent {
+        val result = if (categorySlug == null) {
+            if (trimmedQuery.isEmpty()) {
+                productRepository.getProducts()
+            } else {
+                productRepository.searchProducts(trimmedQuery)
+            }
         } else {
-            productRepository.searchProducts(trimmedQuery)
+            productRepository.getProductsByCategory(categorySlug)
         }
         return result.fold(
             onSuccess = { LoadEvent.Loaded(trimmedQuery, it) },
@@ -125,6 +152,7 @@ class ProductsViewModel(
     companion object {
         const val SEARCH_DEBOUNCE_MS = 400L
         private const val QUERY_KEY = "query"
+        private const val CATEGORY_SLUG_KEY = "categorySlug"
 
         val Factory = viewModelFactory {
             initializer {

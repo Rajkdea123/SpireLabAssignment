@@ -9,11 +9,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.spirelab.productcatalog.ui.cart.CartScreen
+import com.spirelab.productcatalog.ui.categories.CategoriesScreen
 import com.spirelab.productcatalog.ui.details.ProductDetailsScreen
 import com.spirelab.productcatalog.ui.products.ProductsScreen
 
 object Routes {
     const val PRODUCTS = "products"
+    const val CATEGORIES = "categories"
     const val CART = "cart"
     const val PRODUCT_ID_ARG = "productId"
     const val DETAILS = "details/{$PRODUCT_ID_ARG}"
@@ -21,10 +23,6 @@ object Routes {
     fun details(productId: Int) = "details/$productId"
 }
 
-/**
- * Navigation events are only honoured while the originating destination is resumed. This
- * drops double taps that would otherwise push a screen twice or pop past the start screen.
- */
 private fun NavBackStackEntry.isResumed() = lifecycle.currentState == Lifecycle.State.RESUMED
 
 @Composable
@@ -34,6 +32,17 @@ fun AppNavHost() {
     NavHost(navController = navController, startDestination = Routes.PRODUCTS) {
         composable(Routes.PRODUCTS) { entry ->
             ProductsScreen(
+                onProductClick = { id ->
+                    if (entry.isResumed()) navController.navigate(Routes.details(id))
+                },
+                onCartClick = {
+                    if (entry.isResumed()) navController.navigate(Routes.CART) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.CATEGORIES) { entry ->
+            CategoriesScreen(
+                onBackClick = { if (entry.isResumed()) navController.popBackStack() },
                 onProductClick = { id ->
                     if (entry.isResumed()) navController.navigate(Routes.details(id))
                 },
