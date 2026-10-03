@@ -14,4 +14,5 @@ fun ProductDto.toDomain(): Product = Product(
     brand = brand?.takeIf { it.isNotBlank() },
     thumbnail = thumbnail.orEmpty(),
     images = images.orEmpty(),
+    discountPercentage = discountPercentage ?: 0.0,
 )

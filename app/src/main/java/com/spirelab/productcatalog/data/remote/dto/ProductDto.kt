@@ -1,9 +1,5 @@
 package com.spirelab.productcatalog.data.remote.dto
 
-/**
- * Mirrors the DummyJSON product object. Every field is nullable because Gson ignores Kotlin
- * nullability and list requests use `select`, which omits unrequested fields.
- */
 data class ProductDto(
     val id: Int,
     val title: String?,
@@ -15,6 +11,7 @@ data class ProductDto(
     val brand: String?,
     val thumbnail: String?,
     val images: List<String>?,
+    val discountPercentage: Double?,
 )
 
 data class ProductsResponseDto(
@@ -22,4 +19,10 @@ data class ProductsResponseDto(
     val total: Int?,
     val skip: Int?,
     val limit: Int?,
+)
+
+data class CategoryDto(
+    val slug: String,
+    val name: String,
+    val url: String,
 )

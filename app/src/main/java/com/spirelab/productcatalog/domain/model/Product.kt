@@ -11,7 +11,15 @@ data class Product(
     val brand: String?,
     val thumbnail: String,
     val images: List<String>,
+    val discountPercentage: Double = 0.0,
 ) {
     /** Best image for a large display: the first full-size image, falling back to the thumbnail. */
     val imageUrl: String get() = images.firstOrNull() ?: thumbnail
+
+    /** Original price before discount. */
+    val originalPrice: Double get() = if (discountPercentage > 0) {
+        price / (1 - discountPercentage / 100)
+    } else {
+        price
+    }
 }

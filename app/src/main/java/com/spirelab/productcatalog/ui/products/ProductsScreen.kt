@@ -14,38 +14,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.spirelab.productcatalog.domain.PriceFormatter
 import com.spirelab.productcatalog.domain.model.Product
-import com.spirelab.productcatalog.ui.components.CartActionButton
 import com.spirelab.productcatalog.ui.components.ErrorState
 import com.spirelab.productcatalog.ui.components.LoadingState
 import com.spirelab.productcatalog.ui.components.MessageState
@@ -62,6 +50,7 @@ fun ProductsScreen(
     ProductsContent(
         state = state,
         onQueryChange = viewModel::onQueryChange,
+        onCategorySelect = viewModel::onCategorySelect,
         onRetry = viewModel::retry,
         onProductClick = onProductClick,
         onCartClick = onCartClick,
@@ -73,24 +62,26 @@ fun ProductsScreen(
 private fun ProductsContent(
     state: ProductsUiState,
     onQueryChange: (String) -> Unit,
+    onCategorySelect: (String?) -> Unit,
     onRetry: () -> Unit,
     onProductClick: (Int) -> Unit,
     onCartClick: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Product Catalog") },
-                actions = { CartActionButton(count = state.cartCount, onClick = onCartClick) },
-            )
-        },
-    ) { padding ->
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            SearchField(query = state.query, onQueryChange = onQueryChange)
+            CatalogHeader(
+                query = state.query,
+                onQueryChange = onQueryChange,
+                categories = state.categories,
+                selectedCategorySlug = state.selectedCategorySlug,
+                onCategorySelect = onCategorySelect,
+                cartCount = state.cartCount,
+                onCartClick = onCartClick,
+            )
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     state.error != null -> ErrorState(message = state.error, onRetry = onRetry)
@@ -104,31 +95,6 @@ private fun ProductsContent(
             }
         }
     }
-}
-
-@Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
-    val focusManager = LocalFocusManager.current
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder = { Text("Search products") },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Filled.Clear, contentDescription = "Clear search")
-                }
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(28.dp),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-    )
 }
 
 @Composable
